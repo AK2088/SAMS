@@ -114,6 +114,5 @@ STATIC_URL = 'static/'\
 # DEVELOPMENT: print emails in terminal (no real email sent)
 
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-DEFAULT_FROM_EMAIL = 'SAMS <noreply@sams.local>'
 
 

@@ -15,6 +15,12 @@
                 for verification.
             </div>
 
+            {% if error %}
+            <div class="alert alert-danger text-center mb-3" role="alert">
+                Invalid Enrollment ID. Please check and try again.
+            </div>
+            {% endif %}
+
             <div class="card shadow-sm border-0">
                 <div class="card-body p-4">
 
@@ -22,7 +28,7 @@
                         Faculty Registration
                     </h3>
 
-                    <form action="{% url 'otp' %}" method="post">
+                    <form action="{% url 'facultyRegister' %}" method="post">
                         {% csrf_token %}
 
                         <!-- Enrollment ID -->
@@ -35,6 +41,19 @@
                                 name="enrollment_id"
                                 class="form-control"
                                 placeholder="Enter your enrollment ID"
+                                required
+                            >
+                        </div>
+
+                         <div class="mb-4">
+                            <label class="form-label">
+                                Set Password
+                            </label>
+                            <input
+                                type="password"
+                                name="passwd"
+                                class="form-control"
+                                placeholder="Create your password"
                                 required
                             >
                         </div>

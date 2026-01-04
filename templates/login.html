@@ -15,20 +15,26 @@
                         Login
                     </h3>
 
-                    <!-- Role Selection -->
+                    {% if credential_error %}
+                    <div class="alert alert-danger text-center mb-3" role="alert">
+                        Invalid Credentials. Please check and try again.
+                    </div>
+                    {% endif %}
+
+                   
+
+                    <form method="post" action="{% url 'login' %}">
+                        {% csrf_token %}
+                         <!-- Role Selection -->
                     <div class="mb-4">
                         <label class="form-label fw-semibold">
                             Login as
                         </label>
-                        <select class="form-select" id="roleSelect" onchange="toggleFields()">
+                        <select class="form-select" name="roles" id="roleSelect" onchange="toggleFields()">
                             <option value="student" selected>Student</option>
                             <option value="faculty">Faculty</option>
                         </select>
                     </div>
-
-                    <form method="post">
-                        {% csrf_token %}
-
                         <!-- STUDENT FIELDS -->
                         <div id="studentFields">
                             <div class="mb-3">
