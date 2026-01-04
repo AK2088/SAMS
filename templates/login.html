@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block title %}Login | SAMS{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+
+    <div class="row justify-content-center">
+        <div class="col-lg-5 col-md-7">
+
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-4">
+
+                    <h3 class="text-center fw-bold mb-4">
+                        Login
+                    </h3>
+
+                    <!-- Role Selection -->
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold">
+                            Login as
+                        </label>
+                        <select class="form-select" id="roleSelect" onchange="toggleFields()">
+                            <option value="student" selected>Student</option>
+                            <option value="faculty">Faculty</option>
+                        </select>
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+
+                        <!-- STUDENT FIELDS -->
+                        <div id="studentFields">
+                            <div class="mb-3">
+                                <label class="form-label">
+                                    Roll Number
+                                </label>
+                                <input
+                                    type="text"
+                                    name="roll"
+                                    class="form-control"
+                                    placeholder="Enter roll number"
+                                >
+                            </div>
+                        </div>
+
+                        <!-- FACULTY FIELDS -->
+                        <div id="facultyFields" class="d-none">
+                            <div class="mb-3">
+                                <label class="form-label">
+                                    Enrollment ID
+                                </label>
+                                <input
+                                    type="text"
+                                    name="enrollment_id"
+                                    class="form-control"
+                                    placeholder="Enter enrollment ID"
+                                >
+                            </div>
+                        </div>
+
+                        <!-- COMMON PASSWORD -->
+                        <div class="mb-4">
+                            <label class="form-label">
+                                Password
+                            </label>
+                            <input
+                                type="password"
+                                name="password"
+                                class="form-control"
+                                placeholder="Enter password"
+                                required
+                            >
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100">
+                            Login
+                        </button>
+
+                        <!-- Forgot Password -->
+                        <div class="text-center mt-3">
+                            <a href="{% url 'passRst' %}" class="text-decoration-none">
+                                Forgot password?
+                            </a>
+                        </div>
+
+                    </form>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+<script>
+    function toggleFields() {
+        const role = document.getElementById("roleSelect").value;
+        const studentFields = document.getElementById("studentFields");
+        const facultyFields = document.getElementById("facultyFields");
+
+        if (role === "student") {
+            studentFields.classList.remove("d-none");
+            facultyFields.classList.add("d-none");
+        } else {
+            studentFields.classList.add("d-none");
+            facultyFields.classList.remove("d-none");
+        }
+    }
+</script>
+{% endblock %}
