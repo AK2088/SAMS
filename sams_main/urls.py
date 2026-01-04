@@ -12,7 +12,6 @@ urlpatterns = [
     path('registration/',include('student_app.urls')),
     path('optverify/',views.otpVerification,name='otp'),
     path('passwordreset/',views.passwordReset,name='passRst'),
-    path('fdashboard/',include('faculty_app.urls')),
-    path('sdashboard/',include('student_app.urls')),
+   
 
 ]
