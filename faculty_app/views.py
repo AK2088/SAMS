@@ -38,4 +38,17 @@ def facultyRegister(request):
 
 @login_required
 def renderDashboard(request):
-    return render(request, 'teacher_dashboard.html')
+    name = ""
+    user = request.user
+    try:
+        teacher = Teacher.objects.get(user=user)
+        name = teacher.name
+
+    except Teacher.DoesNotExist:
+        redirect('login')
+
+    context={
+        'name':name,
+    }
+
+    return render(request, 'teacher_dashboard.html',context)

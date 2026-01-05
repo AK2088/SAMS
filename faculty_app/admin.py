@@ -26,6 +26,7 @@ class MasterFacultyAdmin(admin.ModelAdmin):
 class TeacherAdmin(admin.ModelAdmin):
     list_display = (
         'user',
+        'name',
         'enrollment_id',
         'department',
         'designation',

@@ -14,6 +14,6 @@ urlpatterns = [
     path('optverify/',views.otpVerification,name='otp'),
     path('fdashboard/',facultyViews.renderDashboard, name='fdashboard'),
     path('passwordreset/',views.passwordReset,name='passRst'),
-   
+    path('logout/',views.logoutView,name='logout'),
 
 ]
