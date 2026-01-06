@@ -5,6 +5,7 @@ from django.utils import timezone
 from django.db import models
 
 class Student(models.Model):
+    name=models.CharField(max_length=50,null=True)
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     roll = models.IntegerField(unique=True)
     face_embedding = models.JSONField(null=True, blank=True)

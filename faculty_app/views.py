@@ -21,6 +21,7 @@ def facultyRegister(request):
             request.session['faculty_id'] = faculty.id
             request.session['email']= faculty.email
             request.session['pass']= request.POST.get('passwd')
+            request.session['faculty_register']=True
 
             send_mail(
                 subject="Your OTP for SAMS registration",
