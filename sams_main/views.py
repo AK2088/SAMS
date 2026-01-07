@@ -48,8 +48,22 @@ def loginView(request):
                 except Teacher.DoesNotExist:
                     credential_error = True
         else:
+            #student login implementation
+            roll = request.POST.get("roll")
+            password=request.POST.get("password")
+            user = authenticate(request,username=roll,password=password)
+
+            if user is None:
+                credential_error=True
+            try:
+                student = Student.objects.get(user=user)
+                if student.mail_verified:
+                    auth_login(request, user)
+                    return redirect("sdashboard")
+
+            except Student.DoesNotExist:
+                credential_error = True
             
-            pass
 
 
     return render(request, "login.html", {
@@ -60,24 +74,32 @@ def loginView(request):
 def otpVerification(request):
     error = False
     registration_success = False
+    display_email = request.session.get('email')
 
-    # ---------- COMMON OTP VALIDATION ----------
     if request.method == 'POST':
+
+        # ---------- OTP DATA ----------
         otp_entered = request.POST.get('otp')
         otp_stored = request.session.get('otp')
         time_sent = request.session.get('time_sent')
 
+        # Missing / expired session → restart flow
         if not otp_stored or not time_sent:
             return redirect('login')
 
         current_time = datetime.now().timestamp()
 
+        # ---------- OTP VALIDATION ----------
         if otp_entered != str(otp_stored) or current_time - time_sent > 300:
-            # wrong otp so we lower block wont be exexuted 
             error = True
+
         else:
-            # ---------- PASSWORD RESET FLOW ----------
-            if request.session.get('for_password_reset_faculty'):
+            # =====================================================
+            # PASSWORD RESET FLOW
+            # =====================================================
+
+            # ---------- FACULTY PASSWORD RESET ----------
+            if request.session.get('for_password_reset_faculty') is True:
 
                 enrollment_id = request.session.get('enrollment_id')
                 newPassword = request.session.get('newPass')
@@ -86,50 +108,79 @@ def otpVerification(request):
                 user.password = make_password(newPassword)
                 user.save()
 
-                for key in ['otp', 'time_sent', 'for_password_reset', 'enrollment_id', 'email', 'newPass']:
-                    request.session.pop(key, None)
-                
-                messages.success(request, "Password reset successful, please login with your new Password")
+                # Password reset finished → clear EVERYTHING
+                request.session.flush()
 
+                messages.success(
+                    request,
+                    "Password reset successful, please login with your new Password"
+                )
                 return redirect('login')
 
+            # ---------- STUDENT PASSWORD RESET ----------
+            elif request.session.get('for_password_reset_faculty') is False:
+
+                roll = request.session.get("roll")
+                newPassword = request.session.get("newPass")
+
+                user = User.objects.get(username=roll)
+                user.password = make_password(newPassword)
+                user.save()
+
+                # Password reset finished → clear EVERYTHING
+                request.session.flush()
+
+                messages.success(
+                    request,
+                    "Password reset successful, please login with your new Password"
+                )
+                return redirect('login')
+
+            # =====================================================
+            # REGISTRATION FLOW
+            # =====================================================
             else:
-                #---------- FACULTY REGISTRATION FLOW ----------
-                if(request.session['faculty_register']):
+
+                # ---------- FACULTY REGISTRATION ----------
+                if request.session.get('faculty_register'):
+
                     if 'faculty_id' not in request.session:
                         return redirect('facultyRegister')
 
-                    faculty_master = MasterFaculty.objects.get(id=request.session['faculty_id'])
+                    faculty_master = MasterFaculty.objects.get(
+                        id=request.session['faculty_id']
+                    )
 
                     user = User.objects.create(
-                    username=faculty_master.enrollment_id,
-                    email=faculty_master.email,
-                    password=make_password(request.session['pass'])
+                        username=faculty_master.enrollment_id,
+                        email=faculty_master.email,
+                        password=make_password(request.session['pass'])
                     )
 
                     Teacher.objects.create(
-                    user=user,
-                    name=faculty_master.name,
-                    enrollment_id=faculty_master.enrollment_id,
-                    department=faculty_master.department,
-                    designation=faculty_master.designation,
-                    mail_verified=True,
-                    is_registered=True,
+                        user=user,
+                        name=faculty_master.name,
+                        enrollment_id=faculty_master.enrollment_id,
+                        department=faculty_master.department,
+                        designation=faculty_master.designation,
+                        mail_verified=True,
+                        is_registered=True,
                     )
 
-                    for key in ['otp', 'faculty_id', 'time_sent', 'pass', 'email']:
-                        request.session.pop(key, None)
-
                     registration_success = True
+
+                    # Registration complete → clear EVERYTHING
+                    request.session.flush()
+
+                # ---------- STUDENT REGISTRATION ----------
                 else:
-                    # Registraion for student
                     if 'roll' not in request.session:
                         return redirect('studentRegister')
-                    
+
                     user = User.objects.create(
                         username=request.session['roll'],
                         email=request.session['email'],
-                        password = make_password(request.session['pass']),
+                        password=make_password(request.session['pass']),
                     )
 
                     Student.objects.create(
@@ -139,61 +190,90 @@ def otpVerification(request):
                         mail_verified=True,
                     )
 
-                    registration_success=True
-                    request.session.clear()
+                    registration_success = True
 
-
+                    # Registration complete → clear EVERYTHING
+                    request.session.flush()
 
     context = {
-        'email': request.session.get('email'),
-        'error': error,
-        'registration_success': registration_success
+    'email':display_email,
+    'error': error,
+    'registration_success': registration_success
     }
-
     return render(request, 'otp_verification.html', context)
+
 
 
 def passwordReset(request):
     credential_error = False
     email = ""
 
+    # Clear stale reset state
+    for key in ['otp', 'time_sent', 'for_password_reset_faculty', 'roll', 'enrollment_id', 'newPass']:
+        request.session.pop(key, None)
+
     if request.method == 'POST':
-        if request.POST.get('role') == 'faculty':
+        role = request.POST.get('role')
+
+        # ================= FACULTY =================
+        if role == 'faculty':
             enrollment_id = request.POST.get('enrollment_id')
 
             try:
                 user = User.objects.get(username=enrollment_id)
+                Teacher.objects.get(user=user)
+
                 email = user.email
 
-                # ---------- OTP GENERATION ----------
                 otp = random.randint(100000, 999999)
                 request.session['otp'] = otp
                 request.session['time_sent'] = datetime.now().timestamp()
-
-                # ---------- PASSWORD RESET FLAGS ----------
                 request.session['for_password_reset_faculty'] = True
                 request.session['enrollment_id'] = enrollment_id
                 request.session['email'] = email
                 request.session['newPass'] = request.POST.get('newPass')
 
-                # ---------- SEND MAIL ----------
                 send_mail(
                     subject='OTP for resetting your password for SAMS',
-                    message=f'Your OTP for password reset is {otp}. This otp is valid for 5 minutes only!',
+                    message=f'Your OTP is {otp}. Valid for 5 minutes.',
                     from_email=settings.EMAIL_HOST_USER,
                     recipient_list=[email],
-                    fail_silently=False
                 )
 
                 return redirect('otp')
 
-            except User.DoesNotExist:
+            except (User.DoesNotExist, Teacher.DoesNotExist):
                 credential_error = True
 
-        elif request.POST.get('role') == 'student':
-            #student pass reset here 
-            # man fuckk thiss shittt just take manual attendance 
-            pass
+        # ================= STUDENT =================
+        elif role == 'student':
+            roll = request.POST.get("roll")
+
+            try:
+                user = User.objects.get(username=roll)
+                Student.objects.get(user=user)
+
+                email = user.email
+
+                otp = random.randint(100000, 999999)
+                request.session['otp'] = otp
+                request.session['time_sent'] = datetime.now().timestamp()
+                request.session['for_password_reset_faculty'] = False
+                request.session['roll'] = roll
+                request.session['email'] = email
+                request.session['newPass'] = request.POST.get('newPass')
+
+                send_mail(
+                    subject='OTP for resetting your password for SAMS',
+                    message=f'Your OTP is {otp}. Valid for 5 minutes.',
+                    from_email=settings.EMAIL_HOST_USER,
+                    recipient_list=[email],
+                )
+
+                return redirect('otp')
+
+            except (User.DoesNotExist, Student.DoesNotExist):
+                credential_error = True
 
     return render(request, 'forgot_password.html', {
         'error': credential_error,
@@ -202,6 +282,11 @@ def passwordReset(request):
 
 
 
+
+
+
 def logoutView(request):
+    request.session.flush()
     logout(request)
+
     return redirect('login')

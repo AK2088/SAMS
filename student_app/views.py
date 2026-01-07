@@ -3,6 +3,8 @@ from datetime import datetime
 import random
 from django.core.mail import send_mail
 from django.conf import settings
+from django.contrib.auth.decorators import login_required
+from .models import Student
 
 
 # Create your views here.
@@ -35,5 +37,20 @@ def studentRegister(request):
 
     return render(request,'student_registration.html')
 
+
+@login_required
 def renderDashboard(request):
-    return render(request,'student_dashboard.html')
+    name = ""
+    user = request.user
+    try:
+        student = Student.objects.get(user=user)
+        name = student.name
+
+    except Student.DoesNotExist:
+        redirect('login')
+
+    context={
+        'name':name,
+    }
+
+    return render(request, 'student_dashboard.html',context)

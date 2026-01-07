@@ -12,8 +12,8 @@
 
             <!-- Info Message -->
             <div class="alert alert-info text-center mb-4" role="alert">
-                An OTP has been sent to<br>
-                <strong> {{ email }} </strong>
+                An OTP has been sent to <strong>{{ email|default:"your registered email" }}</strong>
+
             </div>
 
             {% if error %}
