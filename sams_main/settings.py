@@ -1,5 +1,8 @@
 
-
+"""
+Django settings for SAMS (Smart Attendance Management System)
+Development configuration - NOT suitable for production
+"""
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -10,11 +13,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
+# TODO: Move to environment variable before production deployment
 SECRET_KEY = 'django-insecure-)0!fq^^&2i)!b&^cj#a)&gj@2c19j*(gnx0h3=)=xx_x(a!uub'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
+# Allowed hosts for the application
+# TODO: Add your domain/host when deploying
 ALLOWED_HOSTS = []
 
 
@@ -108,12 +114,15 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
-STATIC_URL = 'static/'\
+STATIC_URL = 'static/'
 
 
+# Email Configuration
 # DEVELOPMENT: print emails in terminal (no real email sent)
-
+# Using console backend for development - emails will print to terminal
+# TODO: Configure real email backend (SMTP) for production
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-DEFAULT_FROM_EMAIL = 'SAMS <noreply@sams.local>'
+
+# Note: EMAIL_HOST_USER is not set - code handles this gracefully with fallback
 
 
