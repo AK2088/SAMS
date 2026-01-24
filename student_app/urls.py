@@ -1,8 +1,11 @@
-
+"""
+Student app URL configuration
+"""
 from django.contrib import admin
-from django.urls import path,include
+from django.urls import path, include
 from . import views
 
 urlpatterns = [
-    path('student/', views.studentRegister,name='studentRegister'),
+    # Student registration endpoint
+    path('student/', views.studentRegister, name='studentRegister'),
 ]
