@@ -1,0 +1,14 @@
+<h2>Dashboard</h2>
+
+<a href="/create/">Create Session</a>
+<a href="/logout/">Logout</a>
+
+<h3>Sessions</h3>
+{% for s in sessions %}
+<p>
+    {{ s.subject.name }} |
+    Count: {{ s.attendance_count }} |
+    <a href="/session/{{ s.id }}/">Open</a> |
+    <a href="/export/{{ s.id }}/">Excel</a>
+</p>
+{% endfor %}

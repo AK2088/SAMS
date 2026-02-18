@@ -1,0 +1,42 @@
+<h2>{{ session.subject }}</h2>
+<p>Attendance Count: {{ count }}</p>
+
+<div id="qr-reader" style="width:300px"></div>
+
+<a href="/export/{{ session.session_id }}/">Export Excel</a>
+
+<script src="https://unpkg.com/html5-qrcode"></script>
+
+<script>
+const qrData = {{ qr_data|safe }};
+
+function startScanner() {
+    const qrReader = new Html5Qrcode("qr-reader");
+    qrReader.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: 250 },
+        (decodedText) => {
+            const data = JSON.parse(decodedText);
+
+            const roll = prompt("Enter Roll:");
+            const name = prompt("Enter Name:");
+
+            fetch("/mark/", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    session_id: data.session_id,
+                    roll: roll,
+                    name: name
+                })
+            })
+            .then(res => res.json())
+            .then(data => alert(data.status || data.error));
+        }
+    );
+}
+
+startScanner();
+</script>
