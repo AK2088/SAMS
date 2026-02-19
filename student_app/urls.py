@@ -8,4 +8,6 @@ from . import views
 urlpatterns = [
     # Student registration endpoint
     path('student/', views.studentRegister, name='studentRegister'),
+    # Face registration endpoint
+    path('register-face/', views.register_face, name='registerFace'),
 ]

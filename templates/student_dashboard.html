@@ -19,6 +19,9 @@
 
             <div class="text-end">
                 <div id="clock" class="fw-semibold"></div>
+                <button id="faceRegisterBtn" class="btn {% if face_verified %}btn-success{% else %}btn-primary{% endif %} btn-sm mt-1 me-2">
+                    {% if face_verified %}Face Verified{% else %}Register Facial Biometrics{% endif %}
+                </button>
                 <a href="{%  url 'logout' %}" class="btn btn-outline-danger btn-sm mt-1">
                     Logout
                 </a>
@@ -82,6 +85,27 @@
     </div>
 </div>
 
+<!-- Camera Modal -->
+<div class="modal fade" id="cameraModal" tabindex="-1" aria-labelledby="cameraModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="cameraModalLabel">Register Facial Biometrics</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <video id="video" autoplay playsinline style="width: 100%; max-width: 500px; border-radius: 8px;"></video>
+                <canvas id="canvas" style="display: none;"></canvas>
+                <div id="cameraStatus" class="mt-3"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="captureBtn">Capture Photo</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Clock Script -->
 <script>
     function updateClock() {
@@ -101,4 +125,196 @@
     updateClock();
 </script>
 
+<!-- Face Registration Script -->
+<script>
+    // Wait for everything to be ready
+    function initFaceRegistration() {
+        let stream = null;
+        const faceVerified = {{ face_verified|yesno:"true,false" }};
+        
+        // Get elements
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const captureBtn = document.getElementById('captureBtn');
+        const faceRegisterBtn = document.getElementById('faceRegisterBtn');
+        const cameraStatus = document.getElementById('cameraStatus');
+        const cameraModalElement = document.getElementById('cameraModal');
+        
+        if (!faceRegisterBtn) {
+            console.error('Face register button not found');
+            return;
+        }
+        
+        if (!cameraModalElement) {
+            console.error('Camera modal element not found');
+            return;
+        }
+        
+        // Initialize camera modal (wait for Bootstrap)
+        let cameraModal = null;
+        if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            cameraModal = new bootstrap.Modal(cameraModalElement);
+        } else {
+            // Wait a bit for Bootstrap to load
+            setTimeout(function() {
+                if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                    cameraModal = new bootstrap.Modal(cameraModalElement);
+                } else {
+                    console.error('Bootstrap Modal not available');
+                }
+            }, 100);
+        }
+        
+        // Open camera when button is clicked
+        faceRegisterBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('Button clicked, faceVerified:', faceVerified);
+            
+            if (faceVerified) {
+                alert('Your face is already verified!');
+                return;
+            }
+            
+            // Ensure modal is initialized
+            if (!cameraModal && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                cameraModal = new bootstrap.Modal(cameraModalElement);
+            }
+            
+            if (cameraModal) {
+                cameraModal.show();
+                setTimeout(function() {
+                    startCamera();
+                }, 300); // Wait for modal animation
+            } else {
+                console.error('Camera modal not initialized');
+                alert('Error: Modal not initialized. Please refresh the page.');
+            }
+        });
+    
+        
+        // Start camera
+        function startCamera() {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                cameraStatus.innerHTML = '<span class="text-danger">Camera API not supported in this browser.</span>';
+                return;
+            }
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
+                .then(function(mediaStream) {
+                    stream = mediaStream;
+                    video.srcObject = stream;
+                    cameraStatus.innerHTML = '<span class="text-success">Camera ready. Position your face in the frame.</span>';
+                })
+                .catch(function(err) {
+                    console.error('Error accessing camera:', err);
+                    cameraStatus.innerHTML = '<span class="text-danger">Error accessing camera. Please allow camera permissions.</span>';
+                });
+        }
+        
+        // Stop camera when modal is closed
+        cameraModalElement.addEventListener('hidden.bs.modal', function() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
+            if (video) {
+                video.srcObject = null;
+            }
+            if (cameraStatus) {
+                cameraStatus.innerHTML = '';
+            }
+        });
+        
+        // Capture photo
+        if (captureBtn) {
+            captureBtn.addEventListener('click', function() {
+                const context = canvas.getContext('2d');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                context.drawImage(video, 0, 0);
+                
+                // Convert to base64
+                const imageData = canvas.toDataURL('image/png');
+                
+                // Disable button and show loading message
+                captureBtn.disabled = true;
+                captureBtn.textContent = 'Processing...';
+                cameraStatus.innerHTML = '<div class="alert alert-info"><strong>Processing your face...</strong><br><small>This might take a minute. Please wait...</small></div>';
+                
+                // Get CSRF token
+                const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || getCookie('csrftoken');
+                
+                // Send to server
+                fetch('{% url "registerFace" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrftoken
+                    },
+                    body: JSON.stringify({ image: imageData })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        cameraStatus.innerHTML = '<span class="text-success">Face registered successfully!</span>';
+                        faceRegisterBtn.textContent = 'Face Verified';
+                        faceRegisterBtn.classList.remove('btn-primary');
+                        faceRegisterBtn.classList.add('btn-success');
+                        
+                        setTimeout(() => {
+                            if (cameraModal) {
+                                cameraModal.hide();
+                            }
+                            location.reload(); // Reload to update UI
+                        }, 1500);
+                    } else {
+                        cameraStatus.innerHTML = '<span class="text-danger">' + (data.error || 'Error registering face') + '</span>';
+                        captureBtn.disabled = false;
+                        captureBtn.textContent = 'Capture Photo';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    cameraStatus.innerHTML = '<span class="text-danger">Error sending data to server.</span>';
+                    captureBtn.disabled = false;
+                    captureBtn.textContent = 'Capture Photo';
+                });
+            });
+        }
+        
+        // Helper function to get CSRF token
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+    }
+    
+    // Initialize when DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initFaceRegistration);
+    } else {
+        // DOM already loaded, but wait for Bootstrap
+        if (typeof bootstrap !== 'undefined') {
+            initFaceRegistration();
+        } else {
+            window.addEventListener('load', function() {
+                setTimeout(initFaceRegistration, 100);
+            });
+        }
+    }
+</script>
+
 {% endblock %}
+
+
+<!-- changes saved  -->
