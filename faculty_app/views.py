@@ -3,7 +3,8 @@ Faculty app views for registration and dashboard
 """
 from datetime import datetime
 from django.shortcuts import render, redirect
-from .models import MasterFaculty, Teacher
+from django.utils import timezone
+from .models import ClassRoom, MasterFaculty, Teacher
 import secrets  # Changed from random to secrets for secure OTP generation
 from django.contrib.auth.decorators import login_required
 from django.conf import settings
@@ -14,6 +15,16 @@ from django.contrib import messages
 OTP_MIN = 100000
 OTP_MAX = 999999
 OTP_EXPIRY_SECONDS = 300  # 5 minutes
+
+
+def _time_status(start_time, end_time, now_time):
+    if not start_time or not end_time:
+        return "Timing Not Set", "secondary"
+    if start_time <= now_time <= end_time:
+        return "Ongoing", "success"
+    if now_time < start_time:
+        return "Upcoming", "warning"
+    return "Completed", "secondary"
 
 
 def facultyRegister(request):
@@ -75,17 +86,38 @@ def renderDashboard(request):
     Requires user to be logged in and have a Teacher profile
     """
     name = ""
+    classes = []
     user = request.user
     
     try:
         teacher = Teacher.objects.get(user=user)
         name = teacher.name
+        now_time = timezone.localtime().time()
+        class_qs = (
+            ClassRoom.objects.filter(teacher=teacher, is_active=True)
+            .select_related("section")
+            .order_by("start_time", "subject_name")
+        )
+        for class_obj in class_qs:
+            status_text, status_color = _time_status(class_obj.start_time, class_obj.end_time, now_time)
+            classes.append(
+                {
+                    "id": class_obj.id,
+                    "subject_name": class_obj.subject_name,
+                    "section_code": class_obj.section.code,
+                    "start_time": class_obj.start_time,
+                    "end_time": class_obj.end_time,
+                    "status_text": status_text,
+                    "status_color": status_color,
+                }
+            )
 
     except Teacher.DoesNotExist:
         return redirect('login')
 
     context = {
         'name': name,
+        'classes': classes,
     }
 
     return render(request, 'teacher_dashboard.html', context)

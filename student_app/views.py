@@ -9,6 +9,7 @@ from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import JsonResponse
+from django.utils import timezone
 import json
 import base64
 import io
@@ -18,11 +19,22 @@ from PIL import Image
 import cv2
 import torch
 from .models import Student
+from faculty_app.models import ClassRoom
 
 # Constants
 OTP_MIN = 100000
 OTP_MAX = 999999
 OTP_EXPIRY_SECONDS = 300  # 5 minutes
+
+
+def _time_status(start_time, end_time, now_time):
+    if not start_time or not end_time:
+        return "Timing Not Set", "secondary"
+    if start_time <= now_time <= end_time:
+        return "Ongoing", "success"
+    if now_time < start_time:
+        return "Upcoming", "warning"
+    return "Completed", "secondary"
 
 
 def studentRegister(request):
@@ -83,12 +95,36 @@ def renderDashboard(request):
     """
     name = ""
     face_verified = False
+    classes = []
+    section_code = ""
     user = request.user
     
     try:
         student = Student.objects.get(user=user)
         name = student.name
         face_verified = student.face_verified
+        if student.section:
+            section_code = student.section.code
+            now_time = timezone.localtime().time()
+            class_qs = (
+                ClassRoom.objects.filter(section=student.section, is_active=True)
+                .select_related("section", "teacher")
+                .order_by("start_time", "subject_name")
+            )
+            for class_obj in class_qs:
+                status_text, status_color = _time_status(class_obj.start_time, class_obj.end_time, now_time)
+                classes.append(
+                    {
+                        "id": class_obj.id,
+                        "subject_name": class_obj.subject_name,
+                        "section_code": class_obj.section.code,
+                        "teacher_name": class_obj.teacher.name,
+                        "start_time": class_obj.start_time,
+                        "end_time": class_obj.end_time,
+                        "status_text": status_text,
+                        "status_color": status_color,
+                    }
+                )
 
     except Student.DoesNotExist:
         return redirect('login')
@@ -96,6 +132,8 @@ def renderDashboard(request):
     context = {
         'name': name,
         'face_verified': face_verified,
+        'classes': classes,
+        'section_code': section_code,
     }
 
     return render(request, 'student_dashboard.html', context)
