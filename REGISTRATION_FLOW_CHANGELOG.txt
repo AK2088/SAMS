@@ -1,0 +1,115 @@
+===============================================================================
+REGISTRATION & OTP FLOW CHANGES
+===============================================================================
+Date: 2026-02-18
+
+Summary:
+- Updated OTP verification page to resend OTP to the correct registration
+  page (student or faculty) based on the current registration flow.
+- Added duplicate-registration checks for both student and faculty
+  registration. If a user is already registered, they are prompted to log in
+  instead of registering again.
+
+-------------------------------------------------------------------------------
+1. File: templates/otp_verification.html
+-------------------------------------------------------------------------------
+- Changed the "Didn't receive the OTP? Resend OTP" link to redirect based on
+  the active flow:
+
+  - For faculty registration (session faculty_register == True):
+    - Link now points to the faculty registration view (`facultyRegister`).
+
+  - For student registration (session faculty_register == False):
+    - Link now points to the student registration view (`studentRegister`).
+
+  - For all other flows (password reset or unknown state):
+    - Link falls back to the role selection page (`role`).
+
+- Implemented using a new template context variable:
+  - `registration_mode` ∈ { 'faculty', 'student', None }.
+
+-------------------------------------------------------------------------------
+2. File: sams_main/views.py (function: otpVerification)
+-------------------------------------------------------------------------------
+- Added logic to compute `registration_mode` before rendering the template:
+
+  - When NOT in password reset flow
+    (`'for_password_reset_faculty'` not in `request.session`):
+
+      - If `request.session.get('faculty_register') is True`:
+          registration_mode = 'faculty'
+
+      - If `request.session.get('faculty_register') is False`:
+          registration_mode = 'student'
+
+      - Otherwise:
+          registration_mode remains None.
+
+- Included `registration_mode` in the context passed to
+  `otp_verification.html`:
+
+  - Context keys now:
+    - `email`
+    - `error`
+    - `registration_success`
+    - `registration_mode`
+
+- No change to the core OTP verification and registration logic; only the
+  template context has been extended for better UX.
+
+-------------------------------------------------------------------------------
+3. File: student_app/views.py (function: studentRegister)
+-------------------------------------------------------------------------------
+- Added `messages` import:
+  - `from django.contrib import messages`
+
+- Added duplicate registration guard before generating OTP:
+
+  - New check:
+    - If `Student.objects.filter(roll=roll).exists()`:
+      - Add info message:
+        - "You are already registered. Please login."
+      - Redirect to `login` view.
+
+- This prevents sending OTP and starting the registration flow for students
+  who already have a `Student` profile.
+
+-------------------------------------------------------------------------------
+4. File: faculty_app/views.py (function: facultyRegister)
+-------------------------------------------------------------------------------
+- Added `messages` import:
+  - `from django.contrib import messages`
+
+- Added duplicate registration guard before generating OTP:
+
+  - New check:
+    - If `Teacher.objects.filter(enrollment_id=enrollment_id).exists()`:
+      - Add info message:
+        - "You are already registered. Please login."
+      - Redirect to `login` view.
+
+- Existing behavior preserved:
+  - Enrollment ID is still validated against `MasterFaculty`.
+  - OTP is generated and emailed only for new, unregistered faculty.
+
+-------------------------------------------------------------------------------
+Behavioral Summary
+-------------------------------------------------------------------------------
+- OTP page:
+  - "Resend OTP" now correctly routes back to:
+    - Student registration page for students.
+    - Faculty registration page for faculty.
+    - Role selection page for password reset or unknown flows.
+
+- Registration:
+  - If a student with a given roll number already exists:
+    - They are prompted that they are already registered and should log in.
+  - If a teacher with a given enrollment ID already exists:
+    - They are also prompted to log in instead of re-registering.
+
+- No changes were made to:
+  - Core OTP validation rules.
+  - Password reset flows.
+  - Dashboard rendering logic.
+
+===============================================================================

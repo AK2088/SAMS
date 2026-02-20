@@ -7,6 +7,7 @@ import secrets  # Changed from random to secrets for secure OTP generation
 from django.core.mail import send_mail
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 from django.http import JsonResponse
 import json
 import base64
@@ -28,20 +29,26 @@ OTP_EXPIRY_SECONDS = 300  # 5 minutes
 def studentRegister(request):
     """
     Handle student registration
-    Collects student details, generates OTP, and sends it to student's KIIT email
+    Collects student details, generates OTP, and sends it to student's KIIT email.
+    Also prevents duplicate registration for already registered students.
     """
     if request.method == 'POST':
         name = request.POST.get('name')
         roll = request.POST.get('roll')
         password = request.POST.get('password')
-        
+
+        # If student already exists, prompt to login instead of re-register
+        if Student.objects.filter(roll=roll).exists():
+            messages.info(request, "You are already registered. Please login.")
+            return redirect('login')
+
         # Construct KIIT email address from roll number
         domain = "@kiit.ac.in"
         mail = str(roll) + domain
 
         # Generate secure 6-digit OTP
         otp = secrets.randbelow(OTP_MAX - OTP_MIN + 1) + OTP_MIN
-        
+
         # Store registration data in session for OTP verification
         request.session['otp'] = otp
         request.session['name'] = name
@@ -63,7 +70,7 @@ def studentRegister(request):
         except Exception:
             # Email sending failed, but continue (will be caught in OTP verification)
             pass
-        
+
         return redirect('otp')
 
     return render(request, 'student_registration.html')
@@ -85,7 +92,6 @@ def renderDashboard(request):
         face_verified = student.face_verified
 
     except Student.DoesNotExist:
-        # Fixed bug: Added return statement
         return redirect('login')
 
     context = {

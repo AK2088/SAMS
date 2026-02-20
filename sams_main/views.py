@@ -103,6 +103,7 @@ def otpVerification(request):
     error = False
     registration_success = False
     display_email = request.session.get('email')
+    registration_mode = None  # 'student', 'faculty', or None
 
     if request.method == 'POST':
         # ---------- OTP DATA ----------
@@ -225,10 +226,18 @@ def otpVerification(request):
                     # Registration complete → clear EVERYTHING
                     request.session.flush()
 
+    # Determine registration mode for template (used for "resend OTP" link)
+    if not registration_success and 'for_password_reset_faculty' not in request.session:
+        if request.session.get('faculty_register') is True:
+            registration_mode = 'faculty'
+        elif request.session.get('faculty_register') is False:
+            registration_mode = 'student'
+
     context = {
-    'email':display_email,
-    'error': error,
-    'registration_success': registration_success
+        'email': display_email,
+        'error': error,
+        'registration_success': registration_success,
+        'registration_mode': registration_mode,
     }
     return render(request, 'otp_verification.html', context)
 

@@ -8,6 +8,7 @@ import secrets  # Changed from random to secrets for secure OTP generation
 from django.contrib.auth.decorators import login_required
 from django.conf import settings
 from django.core.mail import send_mail
+from django.contrib import messages
 
 # Constants
 OTP_MIN = 100000
@@ -18,12 +19,18 @@ OTP_EXPIRY_SECONDS = 300  # 5 minutes
 def facultyRegister(request):
     """
     Handle faculty registration
-    Verifies enrollment ID against MasterFaculty, generates OTP, and sends it to faculty email
+    Verifies enrollment ID against MasterFaculty, generates OTP, and sends it to faculty email.
+    Also prevents duplicate registration for already registered faculty.
     """
     error = False
-    
+
     if request.method == 'POST':
         enrollment_id = request.POST.get("enrollment_id")
+
+        # If teacher already exists, prompt to login instead of re-register
+        if Teacher.objects.filter(enrollment_id=enrollment_id).exists():
+            messages.info(request, "You are already registered. Please login.")
+            return redirect('login')
 
         try:
             # Verify enrollment ID exists in MasterFaculty
