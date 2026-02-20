@@ -17,7 +17,6 @@ import numpy as np
 from PIL import Image
 import cv2
 import torch
-from facenet_pytorch import MTCNN, InceptionResnetV1
 from .models import Student
 
 # Constants
@@ -110,6 +109,11 @@ resnet = None
 def get_face_models():
     """Load face recognition models (lazy initialization - models loaded on first use)"""
     global mtcnn, resnet
+    try:
+        from facenet_pytorch import MTCNN, InceptionResnetV1
+    except Exception as exc:
+        raise RuntimeError(f"Face recognition dependencies not available: {exc}")
+
     if mtcnn is None:
         mtcnn = MTCNN(image_size=160, margin=0, min_face_size=20, thresholds=[0.6, 0.7, 0.7], factor=0.709, device=device)
     if resnet is None:

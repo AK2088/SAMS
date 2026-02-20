@@ -4,9 +4,6 @@ Defines the Student model which extends Django's User model
 """
 from django.db import models
 from django.contrib.auth.models import User
-from datetime import timedelta
-from django.utils import timezone
-from django.db import models
 
 
 class Student(models.Model):
@@ -19,6 +16,14 @@ class Student(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     # Roll number must be unique
     roll = models.IntegerField(unique=True)
+    # One student belongs to one section (nullable for backward compatibility)
+    section = models.ForeignKey(
+        "faculty_app.Section",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="students",
+    )
     # Face embedding data for face recognition (stored as JSON)
     face_embedding = models.JSONField(null=True, blank=True)
 
