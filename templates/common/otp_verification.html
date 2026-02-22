@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "common/base.html" %}
 
 {% block title %}OTP Verification | SAMS{% endblock %}
 
@@ -52,11 +52,20 @@
                         <!-- Resend OTP -->
                         <div class="text-center">
                             <small class="text-muted">
-                                Didn’t receive the OTP?
-                                <a href="{% url 'facultyRegister' %}" class="text-decoration-none">
-                                    Resend OTP
-                                </a>
-
+                                Didn't receive the OTP?
+                                {% if registration_mode == 'faculty' %}
+                                    <a href="{% url 'facultyRegister' %}" class="text-decoration-none">
+                                        Resend OTP
+                                    </a>
+                                {% elif registration_mode == 'student' %}
+                                    <a href="{% url 'studentRegister' %}" class="text-decoration-none">
+                                        Resend OTP
+                                    </a>
+                                {% else %}
+                                    <a href="{% url 'role' %}" class="text-decoration-none">
+                                        Resend OTP
+                                    </a>
+                                {% endif %}
                             </small>
                         </div>
 
@@ -105,3 +114,4 @@
 </div>
 {% endif %}
 {% endblock %}
+

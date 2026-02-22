@@ -21,7 +21,7 @@ DEBUG = True
 
 # Allowed hosts for the application
 # TODO: Add your domain/host when deploying
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -35,7 +35,6 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'student_app',
     'faculty_app',
-    'accounts',
 
 ]
 
@@ -104,7 +103,9 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+# Use campus timezone so dashboard status badges and attendance export times
+# align with class schedule times stored in DB.
+TIME_ZONE = 'Asia/Kolkata'
 
 USE_I18N = True
 
@@ -115,6 +116,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+STATICFILES_DIRS = [BASE_DIR / 'static']
 
 
 # Email Configuration

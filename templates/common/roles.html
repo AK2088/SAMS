@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "common/base.html" %}
 
 {% block title %}Select Role | SAMS{% endblock %}
 
@@ -8,34 +8,22 @@
     <div class="row justify-content-center">
         <div class="col-lg-6 col-md-8 text-center">
 
-
-           <p class="fw-bold fs-5 mb-3">
-                 Please select your role to continue with registration.
+            <p class="fw-bold fs-5 mb-3">
+                Please select your role to continue with registration.
             </p>
 
-
             <div class="d-grid gap-4">
-
-                <!-- Student Card -->
-                <a href="{% url 'studentRegister' %}"
-                   class="text-decoration-none">
+                <a href="{% url 'studentRegister' %}" class="text-decoration-none">
                     <div class="card shadow-sm border-0 p-4 role-card">
-                        <h4 class="fw-semibold mb-2">
-                            🎓 Student
-                        </h4>
+                        <h4 class="fw-semibold mb-2">Student</h4>
                     </div>
                 </a>
 
-                <!-- Faculty Card -->
-                <a href="{% url 'facultyRegister' %}"
-                   class="text-decoration-none">
+                <a href="{% url 'facultyRegister' %}" class="text-decoration-none">
                     <div class="card shadow-sm border-0 p-4 role-card">
-                        <h4 class="fw-semibold mb-2">
-                            🧑‍🏫 Faculty
-                        </h4>
+                        <h4 class="fw-semibold mb-2">Faculty</h4>
                     </div>
                 </a>
-
             </div>
 
         </div>
@@ -43,16 +31,16 @@
 
 </div>
 
-<!-- Optional hover effect -->
 <style>
     .role-card {
         transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
+
     .role-card:hover {
         background-color: #0d6efd;
         color: white;
         transform: translateY(-4px);
-        box-shadow: 0 0.75rem 1.5rem rgba(0,0,0,0.08);
+        box-shadow: 0 0.75rem 1.5rem rgba(0, 0, 0, 0.08);
     }
 </style>
 {% endblock %}
