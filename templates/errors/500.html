@@ -1,0 +1,22 @@
+{% extends "common/base.html" %}
+{% block title %}500 Server Error | SAMS{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-4 text-center">
+                    <h2 class="fw-bold mb-2">500 - Server Error</h2>
+                    <p class="text-muted mb-4">Something went wrong on our side. Please try again in a moment.</p>
+                    <div class="d-grid gap-2 d-sm-flex justify-content-sm-center">
+                        <a href="{% url 'home' %}" class="btn btn-primary">Go Home</a>
+                        <a href="{% url 'login' %}" class="btn btn-outline-secondary">Login</a>
+                        <button type="button" class="btn btn-outline-dark" onclick="history.back()">Go Back</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -3,7 +3,7 @@ Student app views for registration and dashboard
 """
 from django.shortcuts import render, redirect
 from datetime import datetime
-import secrets  # Changed from random to secrets for secure OTP generation
+import secrets
 from django.core.mail import send_mail
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
@@ -19,7 +19,7 @@ from PIL import Image
 import cv2
 import torch
 from .models import Student
-from faculty_app.models import ClassRoom
+from faculty_app.models import Attendance, ClassRoom, RollingQRToken
 
 # Constants
 OTP_MIN = 100000
@@ -28,6 +28,7 @@ OTP_EXPIRY_SECONDS = 300  # 5 minutes
 
 
 def _time_status(start_time, end_time, now_time):
+    # Used by dashboard cards to show quick class state labels.
     if not start_time or not end_time:
         return "Timing Not Set", "secondary"
     if start_time <= now_time <= end_time:
@@ -84,7 +85,7 @@ def studentRegister(request):
 
         return redirect('otp')
 
-    return render(request, 'student_registration.html')
+    return render(request, 'student/student_registration.html')
 
 
 @login_required
@@ -100,6 +101,7 @@ def renderDashboard(request):
     user = request.user
     
     try:
+        # Load logged-in student's profile and classes for their section only.
         student = Student.objects.get(user=user)
         name = student.name
         face_verified = student.face_verified
@@ -136,7 +138,7 @@ def renderDashboard(request):
         'section_code': section_code,
     }
 
-    return render(request, 'student_dashboard.html', context)
+    return render(request, 'student/student_dashboard.html', context)
 
 
 # Initialize FaceNet models (load once, reuse)
@@ -205,13 +207,6 @@ def register_face(request):
         student.face_verified = True
         student.save()
         
-        # Save to text file for testing 
-        os.makedirs('facial_vectors', exist_ok=True)
-        with open(f'facial_vectors/roll_{student.roll}.txt', 'w') as f:
-            f.write(f"Roll Number: {student.roll}\n")
-            f.write(f"Student Name: {student.name}\n")
-            f.write(f"Face Embedding Vector:\n")
-            f.write(json.dumps(embedding_list, indent=2))
         
         return JsonResponse({
             'success': True,
@@ -223,3 +218,177 @@ def register_face(request):
         return JsonResponse({'error': 'Student profile not found'}, status=404)
     except Exception as e:
         return JsonResponse({'error': f'Error processing face: {str(e)}'}, status=500)
+
+
+def _decode_base64_image(image_b64):
+    """Decode base64 image payload into RGB ndarray for face processing."""
+    if ',' in image_b64:
+        image_b64 = image_b64.split(',')[1]
+    img_data = base64.b64decode(image_b64)
+    img = Image.open(io.BytesIO(img_data))
+    return cv2.cvtColor(np.array(img), cv2.COLOR_BGR2RGB)
+
+
+def _cosine_similarity(vec1, vec2):
+    """Compute cosine similarity between two embeddings."""
+    a = np.array(vec1, dtype=np.float32)
+    b = np.array(vec2, dtype=np.float32)
+    denom = np.linalg.norm(a) * np.linalg.norm(b)
+    if denom == 0:
+        return -1.0
+    return float(np.dot(a, b) / denom)
+
+
+@login_required
+def scan_attendance_qr(request):
+    """Validate scanned QR token and create/update pending attendance attempt."""
+    if request.method != "POST":
+        return JsonResponse({"error": "Only POST method allowed"}, status=405)
+
+    try:
+        student = Student.objects.select_related("section").get(user=request.user)
+    except Student.DoesNotExist:
+        return JsonResponse({"error": "Student profile not found"}, status=404)
+
+    if not student.section_id:
+        return JsonResponse({"error": "Student is not assigned to any section."}, status=400)
+
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON payload."}, status=400)
+
+    token_value = (data.get("token") or "").strip()
+    classroom_id = data.get("classroom_id")
+    if not token_value:
+        return JsonResponse({"error": "Token is required."}, status=400)
+    if classroom_id is None:
+        return JsonResponse({"error": "classroom_id is required."}, status=400)
+
+    try:
+        classroom_id = int(classroom_id)
+    except (TypeError, ValueError):
+        return JsonResponse({"error": "Invalid classroom_id."}, status=400)
+
+    now = timezone.now()
+    # Token must be active and unexpired at scan time.
+    qr_token = (
+        RollingQRToken.objects.select_related("session__classroom")
+        .filter(token=token_value, is_active=True)
+        .first()
+    )
+    if not qr_token:
+        return JsonResponse({"error": "Invalid QR token."}, status=400)
+    if qr_token.expires_at <= now:
+        return JsonResponse({"error": "QR token expired."}, status=400)
+
+    session = qr_token.session
+    if not session.is_live:
+        return JsonResponse({"error": "Attendance session is not live."}, status=400)
+    if classroom_id != session.classroom_id:
+        return JsonResponse({"error": "Scanned QR does not belong to selected class."}, status=400)
+
+    # Hard authorization check: student can mark attendance only for classes in their own section.
+    if session.classroom.section_id != student.section_id:
+        return JsonResponse({"error": "You don't belong to this class."}, status=403)
+
+    # One attendance record per student per session (enforced by model constraint too).
+    attendance, created = Attendance.objects.get_or_create(
+        session=session,
+        student=student,
+        defaults={
+            "status": Attendance.STATUS_PENDING_FACE,
+            "scanned_token": qr_token,
+        },
+    )
+    if not created and attendance.status == Attendance.STATUS_PRESENT:
+        return JsonResponse({"error": "Attendance already marked as present for this session."}, status=400)
+
+    attendance.status = Attendance.STATUS_PENDING_FACE
+    attendance.scanned_token = qr_token
+    attendance.save(update_fields=["status", "scanned_token"])
+
+    return JsonResponse(
+        {
+            "success": True,
+            "attendance_id": attendance.id,
+            "session_id": session.id,
+            "subject_name": session.classroom.subject_name,
+            "section_code": session.classroom.section.code,
+            "message": "QR accepted. Proceed to face verification.",
+        }
+    )
+
+
+@login_required
+def verify_attendance_face(request):
+    """Complete attendance by matching captured face with registered embedding."""
+    if request.method != "POST":
+        return JsonResponse({"error": "Only POST method allowed"}, status=405)
+
+    try:
+        student = Student.objects.get(user=request.user)
+    except Student.DoesNotExist:
+        return JsonResponse({"error": "Student profile not found"}, status=404)
+
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON payload."}, status=400)
+
+    attendance_id = data.get("attendance_id")
+    image_b64 = data.get("image", "")
+    if not attendance_id or not image_b64:
+        return JsonResponse({"error": "attendance_id and image are required."}, status=400)
+    if not student.face_embedding:
+        return JsonResponse({"error": "No registered face embedding found for student."}, status=400)
+
+    attendance = Attendance.objects.filter(id=attendance_id, student=student).select_related("session").first()
+    if not attendance:
+        return JsonResponse({"error": "Attendance record not found."}, status=404)
+
+    try:
+        # Extract live embedding from captured image.
+        img_rgb = _decode_base64_image(image_b64)
+        mtcnn_model, resnet_model = get_face_models()
+        face = mtcnn_model(img_rgb)
+        if face is None:
+            return JsonResponse({"error": "No face detected. Try again."}, status=400)
+        embedding = resnet_model(face.unsqueeze(0)).detach().cpu().numpy().flatten().tolist()
+    except Exception as exc:
+        return JsonResponse({"error": f"Error processing face: {exc}"}, status=500)
+
+    # Default threshold can be tuned via settings.py (FACE_MATCH_THRESHOLD).
+    threshold = float(getattr(settings, "FACE_MATCH_THRESHOLD", 0.70))
+    score = _cosine_similarity(student.face_embedding, embedding)
+    now = timezone.now()
+    attendance.face_checked_at = now
+    attendance.face_score = score
+
+    if score >= threshold:
+        attendance.status = Attendance.STATUS_PRESENT
+        attendance.marked_at = now
+        attendance.save(update_fields=["face_checked_at", "face_score", "status", "marked_at"])
+        return JsonResponse(
+            {
+                "success": True,
+                "match": True,
+                "score": score,
+                "threshold": threshold,
+                "status": attendance.status,
+                "message": "Face verified. Attendance marked present.",
+            }
+        )
+
+    attendance.status = Attendance.STATUS_FACE_FAILED
+    attendance.save(update_fields=["face_checked_at", "face_score", "status"])
+    return JsonResponse(
+        {
+            "success": True,
+            "match": False,
+            "score": score,
+            "threshold": threshold,
+            "status": attendance.status,
+            "message": "Face verification failed.",
+        }
+    )

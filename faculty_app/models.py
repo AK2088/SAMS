@@ -101,7 +101,7 @@ class ClassRoom(models.Model):
 
 class AttendanceSession(models.Model):
     """
-    One live attendance window created when teacher clicks "Mark Attendance".
+    One live attendance window created when teacher clicks "Take Attendance".
     """
     classroom = models.ForeignKey(ClassRoom, on_delete=models.CASCADE, related_name="sessions")
     teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE, related_name="attendance_sessions")

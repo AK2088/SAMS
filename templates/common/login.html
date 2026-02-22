@@ -1,4 +1,5 @@
-{% extends "base.html" %}
+{% extends "common/base.html" %}
+{% load static %}
 
 {% block title %}Login | SAMS{% endblock %}
 
@@ -30,7 +31,14 @@
                         <label class="form-label fw-semibold">
                             Login as
                         </label>
-                        <select class="form-select" name="roles" id="roleSelect" onchange="toggleFields()">
+                        <select
+                            class="form-select"
+                            name="roles"
+                            id="roleSelect"
+                            data-role-toggle
+                            data-student-target="studentFields"
+                            data-faculty-target="facultyFields"
+                        >
                             <option value="student" selected>Student</option>
                             <option value="faculty">Faculty</option>
                         </select>
@@ -105,20 +113,9 @@
     </div>
 
 </div>
-
-<script>
-    function toggleFields() {
-        const role = document.getElementById("roleSelect").value;
-        const studentFields = document.getElementById("studentFields");
-        const facultyFields = document.getElementById("facultyFields");
-
-        if (role === "student") {
-            studentFields.classList.remove("d-none");
-            facultyFields.classList.add("d-none");
-        } else {
-            studentFields.classList.add("d-none");
-            facultyFields.classList.remove("d-none");
-        }
-    }
-</script>
 {% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/common/role_toggle.js' %}"></script>
+{% endblock %}
+

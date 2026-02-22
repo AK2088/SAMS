@@ -23,11 +23,32 @@ OTP_MAX = 999999
 
 def home(request):
     """Render the home page"""
-    return render(request, 'home.html')
+    return render(request, 'common/home.html')
+
+
+def error_400(request, exception=None):
+    """Custom HTTP 400 page."""
+    return render(request, "errors/400.html", status=400)
+
+
+def error_403(request, exception=None):
+    """Custom HTTP 403 page."""
+    return render(request, "errors/403.html", status=403)
+
+
+def error_404(request, exception=None):
+    """Custom HTTP 404 page."""
+    return render(request, "errors/404.html", status=404)
+
+
+def error_500(request):
+    """Custom HTTP 500 page."""
+    return render(request, "errors/500.html", status=500)
+
 
 def role(request):
     """Render the role selection page for registration"""
-    return render(request,'roles.html')
+    return render(request,'common/roles.html')
 
 
 def loginView(request):
@@ -90,7 +111,7 @@ def loginView(request):
                 except Student.DoesNotExist:
                     credential_error = True
 
-    return render(request, "login.html", {
+    return render(request, "common/login.html", {
         "credential_error": credential_error
     })
 
@@ -111,7 +132,7 @@ def otpVerification(request):
         otp_stored = request.session.get('otp')
         time_sent = request.session.get('time_sent')
 
-        # Missing / expired session → restart flow
+        # Missing/expired session -> restart flow
         if not otp_stored or not time_sent:
             return redirect('login')
 
@@ -137,7 +158,7 @@ def otpVerification(request):
                 user.password = make_password(newPassword)
                 user.save()
 
-                # Password reset finished → clear EVERYTHING
+                # Password reset finished -> clear everything
                 request.session.flush()
 
                 messages.success(
@@ -155,7 +176,7 @@ def otpVerification(request):
                 user.password = make_password(newPassword)
                 user.save()
 
-                # Password reset finished → clear EVERYTHING
+                # Password reset finished -> clear everything
                 request.session.flush()
 
                 messages.success(
@@ -198,7 +219,7 @@ def otpVerification(request):
 
                     registration_success = True
 
-                    # Registration complete → clear EVERYTHING
+                    # Registration complete -> clear everything
                     request.session.flush()
 
                 # ---------- STUDENT REGISTRATION ----------
@@ -223,7 +244,7 @@ def otpVerification(request):
 
                     registration_success = True
 
-                    # Registration complete → clear EVERYTHING
+                    # Registration complete -> clear everything
                     request.session.flush()
 
     # Determine registration mode for template (used for "resend OTP" link)
@@ -239,7 +260,7 @@ def otpVerification(request):
         'registration_success': registration_success,
         'registration_mode': registration_mode,
     }
-    return render(request, 'otp_verification.html', context)
+    return render(request, 'common/otp_verification.html', context)
 
 
 
@@ -254,7 +275,6 @@ def _generate_otp():
 def _send_otp_email(email, otp, purpose='password reset'):
     """
     Helper function to send OTP email
-    Handles missing email settings gracefully
     """
     try:
         # Use a default from_email if EMAIL_HOST_USER is not set
@@ -348,7 +368,7 @@ def passwordReset(request):
             except (User.DoesNotExist, Student.DoesNotExist):
                 credential_error = True
 
-    return render(request, 'forgot_password.html', {
+    return render(request, 'common/forgot_password.html', {
         'error': credential_error,
         'email': email,
     })
