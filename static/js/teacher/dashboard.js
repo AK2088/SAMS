@@ -86,13 +86,39 @@
         let isStopping = false;
 
         if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
-            qrModal = new bootstrap.Modal(qrModalEl);
+            qrModal = new bootstrap.Modal(qrModalEl, {
+                backdrop: false,
+                keyboard: true,
+                focus: false,
+            });
         }
 
         function setStatus(msg, isError) {
             const cssClass = isError ? 'text-danger' : 'text-success';
             qrStatus.innerHTML = `<span class="${cssClass}">${msg}</span>`;
             qrStatusInline.innerHTML = `<span class="${cssClass}">${msg}</span>`;
+        }
+
+        function cleanupModalArtifacts() {
+            const hasVisibleModal = document.querySelector('.modal.show');
+            if (hasVisibleModal) {
+                return;
+            }
+            document.body.classList.remove('modal-open');
+            document.body.style.removeProperty('padding-right');
+            removeAllBackdrops();
+        }
+
+        function removeAllBackdrops() {
+            document.querySelectorAll('.modal-backdrop').forEach(function (el) {
+                el.remove();
+            });
+        }
+
+        function unlockBodyScroll() {
+            document.body.classList.remove('modal-open');
+            document.body.style.removeProperty('padding-right');
+            document.body.style.removeProperty('overflow');
         }
 
         function renderQr(token) {
@@ -153,6 +179,7 @@
             // Preferred close path via Bootstrap API.
             if (qrModal && typeof qrModal.hide === 'function') {
                 qrModal.hide();
+                setTimeout(cleanupModalArtifacts, 350);
                 return;
             }
 
@@ -162,9 +189,9 @@
             qrModalEl.setAttribute('aria-hidden', 'true');
             document.body.classList.remove('modal-open');
             document.body.style.removeProperty('padding-right');
-            document.querySelectorAll('.modal-backdrop').forEach(function (el) {
-                el.remove();
-            });
+            removeAllBackdrops();
+            cleanupModalArtifacts();
+            unlockBodyScroll();
         }
 
         async function refreshQr() {
@@ -208,11 +235,16 @@
                     expiresAtMs = new Date(data.expires_at).getTime();
                     startCountdown();
                     setStatus('Session started.', false);
-                    qrInlinePanel.style.display = 'block';
-                    qrInlinePanel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    // Keep QR display popup-only; don't render duplicate inline panel behind modal.
+                    qrInlinePanel.style.display = 'none';
 
                     if (qrModal) {
+                        removeAllBackdrops();
                         qrModal.show();
+                        setTimeout(function () {
+                            removeAllBackdrops();
+                            unlockBodyScroll();
+                        }, 120);
                     }
                     pollTimer = setInterval(refreshQr, 3000);
                 } catch (err) {
@@ -303,6 +335,11 @@
         });
         stopBtnInline.addEventListener('click', stopCurrentSession);
 
+        qrModalEl.addEventListener('shown.bs.modal', function () {
+            removeAllBackdrops();
+            unlockBodyScroll();
+        });
+
         qrModalEl.addEventListener('hidden.bs.modal', function () {
             // Closing modal is treated as ending attendance for this session.
             if (sessionId) {
@@ -310,6 +347,9 @@
             } else {
                 clearQrDisplay();
             }
+            removeAllBackdrops();
+            cleanupModalArtifacts();
+            unlockBodyScroll();
         });
     }
 

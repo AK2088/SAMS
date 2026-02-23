@@ -6,41 +6,32 @@
 <div class="container py-5">
 
     <div class="row justify-content-center">
-        <div class="col-lg-6 col-md-8 text-center">
+        <div class="col-lg-7 col-md-9">
+            <div class="card surface-card border-0 p-4 p-md-5 text-center">
+                <p class="kicker mb-2">Create Account</p>
+                <h2 class="fw-bold mb-2">Choose Registration Role</h2>
+                <p class="text-muted mb-4">
+                    Select your role to continue with the registration flow.
+                </p>
 
-            <p class="fw-bold fs-5 mb-3">
-                Please select your role to continue with registration.
-            </p>
+                <div class="d-grid gap-3">
+                    <a href="{% url 'studentRegister' %}" class="text-decoration-none">
+                        <div class="card role-card border-0 p-4 text-start">
+                            <h4 class="fw-semibold mb-2">Student</h4>
+                            <p class="text-muted mb-0">Register with your roll number and verify through KIIT mail OTP.</p>
+                        </div>
+                    </a>
 
-            <div class="d-grid gap-4">
-                <a href="{% url 'studentRegister' %}" class="text-decoration-none">
-                    <div class="card shadow-sm border-0 p-4 role-card">
-                        <h4 class="fw-semibold mb-2">Student</h4>
-                    </div>
-                </a>
-
-                <a href="{% url 'facultyRegister' %}" class="text-decoration-none">
-                    <div class="card shadow-sm border-0 p-4 role-card">
-                        <h4 class="fw-semibold mb-2">Faculty</h4>
-                    </div>
-                </a>
+                    <a href="{% url 'facultyRegister' %}" class="text-decoration-none">
+                        <div class="card role-card border-0 p-4 text-start">
+                            <h4 class="fw-semibold mb-2">Faculty</h4>
+                            <p class="text-muted mb-0">Register with your official enrollment ID and complete OTP verification.</p>
+                        </div>
+                    </a>
+                </div>
             </div>
-
         </div>
     </div>
 
 </div>
-
-<style>
-    .role-card {
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-
-    .role-card:hover {
-        background-color: #0d6efd;
-        color: white;
-        transform: translateY(-4px);
-        box-shadow: 0 0.75rem 1.5rem rgba(0, 0, 0, 0.08);
-    }
-</style>
 {% endblock %}

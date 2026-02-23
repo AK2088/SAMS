@@ -7,14 +7,18 @@
 <div class="container py-5">
 
     <div class="row justify-content-center">
-        <div class="col-lg-5 col-md-7">
+        <div class="col-lg-5 col-md-7 col-sm-10">
 
-            <div class="card shadow-sm border-0">
-                <div class="card-body p-4">
+            <div class="card auth-card border-0">
+                <div class="card-body p-4 p-md-5">
 
-                    <h3 class="text-center fw-bold mb-4">
+                    <p class="kicker text-center mb-2">Welcome Back</p>
+                    <h3 class="text-center fw-bold mb-2">
                         Login
                     </h3>
+                    <p class="text-muted text-center auth-note mb-4">
+                        Access your dashboard securely with your registered credentials.
+                    </p>
 
                     {% if credential_error %}
                     <div class="alert alert-danger text-center mb-3" role="alert">
@@ -92,13 +96,13 @@
                         </button>
 
                         <!-- Forgot Password -->
-                        <div class="text-center mt-3">
+                        <div class="text-center mt-3 auth-note">
                             <a href="{% url 'passRst' %}" class="text-decoration-none">
                                 Forgot password?
                             </a>
                         </div>
 
-                        <div class="text-center mt-3">
+                        <div class="text-center mt-3 auth-note">
                             <a href="{% url 'role' %}" class="text-decoration-none">
                                 Register instead ?
                             </a>

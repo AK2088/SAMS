@@ -3,6 +3,14 @@
 {% block title %}Teacher Dashboard{% endblock %}
 {% block extra_css %}
 <style>
+    .class-card-col:nth-child(2n) .dashboard-card {
+        animation-delay: 0.08s;
+    }
+
+    .class-card-col:nth-child(3n) .dashboard-card {
+        animation-delay: 0.16s;
+    }
+
     @media (max-width: 576px) {
         .dashboard-top-actions {
             width: 100%;
@@ -34,24 +42,27 @@
         data-download-template="{% url 'downloadAttendanceCsv' 0 %}"
     ></div>
 
-    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-        <div>
-            <h4 class="fw-semibold mb-1">Welcome, {{ name }}</h4>
-            <p class="text-muted mb-0">Here are your classes scheduled for today</p>
-        </div>
+    <div class="dashboard-header p-3 p-md-4 mb-4">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+                <p class="kicker mb-1">Teacher Workspace</p>
+                <h4 class="fw-semibold mb-1">Welcome, {{ name }}</h4>
+                <p class="text-muted mb-0">Here are your classes scheduled for today</p>
+            </div>
 
-        <div class="text-end dashboard-top-actions">
-            <div id="clock" class="fw-semibold"></div>
-            <a href="{% url 'logout' %}" class="btn btn-outline-danger btn-sm mt-1">
-                Logout
-            </a>
+            <div class="text-end dashboard-top-actions">
+                <div id="clock" class="fw-semibold"></div>
+                <a href="{% url 'logout' %}" class="btn btn-outline-danger btn-sm mt-1">
+                    Logout
+                </a>
+            </div>
         </div>
     </div>
 
     <div class="row g-3">
         {% for cls in classes %}
-        <div class="col-12 col-sm-6 col-lg-4">
-            <div class="card h-100 p-3">
+        <div class="col-12 col-sm-6 col-lg-4 class-card-col">
+            <div class="card dashboard-card border-0 p-3 h-100">
                 <h6 class="fw-semibold mb-1">{{ cls.subject_name }}</h6>
                 <span class="text-muted small">{{ cls.section_code }}</span>
 
@@ -78,21 +89,23 @@
         </div>
         {% empty %}
         <div class="col-12">
-            <div class="alert alert-info mb-0">No classes assigned in database.</div>
+            <div class="card empty-state-card border-0 p-4">
+                <div class="alert alert-info mb-0">No classes assigned in database.</div>
+            </div>
         </div>
         {% endfor %}
     </div>
 </div>
 
-<div class="modal fade" id="qrModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
-    <div class="modal-dialog modal-dialog-centered">
+<div class="modal fade" id="qrModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="false" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">Live Attendance QR</h5>
             </div>
             <div class="modal-body text-center">
                 <canvas id="qrCanvas" style="max-width: 260px; width: 100%;"></canvas>
-                <div class="mt-2"><code id="qrTokenText" class="small"></code></div>
+                <div class="mt-2"><code id="qrTokenText" class="small qr-token"></code></div>
                 <div class="mt-2 small text-muted">Token refreshes every 15 seconds.</div>
                 <div id="qrExpiry" class="mt-2 fw-semibold"></div>
                 <div id="qrStatus" class="mt-2"></div>
@@ -110,7 +123,7 @@
             <h6 class="fw-semibold">Live Attendance QR (Active)</h6>
             <canvas id="qrCanvasInline" style="max-width: 260px; width: 100%;"></canvas>
             <div class="mt-2 fw-semibold">Token:</div>
-            <div class="mt-1"><code id="qrTokenTextInline" class="small"></code></div>
+            <div class="mt-1"><code id="qrTokenTextInline" class="small qr-token"></code></div>
             <div id="qrExpiryInline" class="mt-2 fw-semibold"></div>
             <div id="qrStatusInline" class="mt-2"></div>
             <div class="mt-3">
@@ -123,8 +136,6 @@
 {% endblock %}
 
 {% block extra_js %}
-
- <!-- this is qr genetaion js script-->
-<script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script> 
-<script src="{% static 'js/teacher/dashboard.js' %}?v=4"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+<script src="{% static 'js/teacher/dashboard.js' %}?v=8"></script>
 {% endblock %}

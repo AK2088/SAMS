@@ -123,6 +123,7 @@ STATICFILES_DIRS = [BASE_DIR / 'static']
 # DEVELOPMENT: print emails in terminal (no real email sent)
 # Using console backend for development - emails will print to terminal
 # TODO: Configure real email backend (SMTP) for production
+
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 # Note: EMAIL_HOST_USER is not set - code handles this gracefully with fallback

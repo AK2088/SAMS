@@ -74,6 +74,9 @@
         const scanStatus = document.getElementById('scanStatus');
         const manualTokenInput = document.getElementById('manualTokenInput');
         const manualTokenSubmitBtn = document.getElementById('manualTokenSubmitBtn');
+        let openCameraAfterScanClose = false;
+        let startScannerTimer = null;
+        let scannerAutoStopTimer = null;
 
         if (
             !video || !canvas || !captureBtn || !faceRegisterBtn || !cameraStatus || !cameraModalElement ||
@@ -85,8 +88,16 @@
         let scanModal = null;
         let cameraModal = null;
         if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
-            cameraModal = new bootstrap.Modal(cameraModalElement);
-            scanModal = new bootstrap.Modal(scanModalElement);
+            cameraModal = new bootstrap.Modal(cameraModalElement, {
+                backdrop: false,
+                keyboard: true,
+                focus: false,
+            });
+            scanModal = new bootstrap.Modal(scanModalElement, {
+                backdrop: false,
+                keyboard: true,
+                focus: false,
+            });
         }
 
         function setCameraMode(mode) {
@@ -97,6 +108,42 @@
             } else {
                 cameraModalLabel.textContent = 'Register Facial Biometrics';
                 captureBtn.textContent = 'Capture Photo';
+            }
+        }
+
+        function cleanupModalArtifacts() {
+            const hasVisibleModal = document.querySelector('.modal.show');
+            if (hasVisibleModal) {
+                return;
+            }
+            document.body.classList.remove('modal-open');
+            document.body.style.removeProperty('padding-right');
+            document.querySelectorAll('.modal-backdrop').forEach(function (el) {
+                el.remove();
+            });
+        }
+
+        function unlockBodyScroll() {
+            document.body.classList.remove('modal-open');
+            document.body.style.removeProperty('padding-right');
+        }
+
+        function normalizeBackdrops() {
+            const backdrops = Array.from(document.querySelectorAll('.modal-backdrop'));
+            if (backdrops.length <= 1) {
+                return;
+            }
+            backdrops.slice(0, -1).forEach(function (el) {
+                el.remove();
+            });
+        }
+
+        function launchAttendanceCamera() {
+            setCameraMode('attendance');
+            if (cameraModal) {
+                cameraModal.show();
+                unlockBodyScroll();
+                setTimeout(startCamera, 250);
             }
         }
 
@@ -118,6 +165,10 @@
         }
 
         async function stopScanner() {
+            if (scannerAutoStopTimer) {
+                clearTimeout(scannerAutoStopTimer);
+                scannerAutoStopTimer = null;
+            }
             if (qrScanner && scannerRunning) {
                 try {
                     await qrScanner.stop();
@@ -131,6 +182,19 @@
                 }
             }
             scannerRunning = false;
+        }
+
+        function scheduleScannerAutoStop() {
+            if (scannerAutoStopTimer) {
+                clearTimeout(scannerAutoStopTimer);
+            }
+            scannerAutoStopTimer = setTimeout(async function () {
+                if (!scanModalElement.classList.contains('show')) {
+                    return;
+                }
+                await stopScanner();
+                scanStatus.innerHTML = '<span class="text-warning">Scanner paused for performance. You can still submit token manually.</span>';
+            }, 25000);
         }
 
         async function submitScannedToken(tokenText) {
@@ -166,12 +230,10 @@
                 scanStatus.innerHTML = '<span class="text-success">QR accepted. Starting face verification...</span>';
                 setTimeout(function () {
                     if (scanModal) {
+                        openCameraAfterScanClose = true;
                         scanModal.hide();
-                    }
-                    setCameraMode('attendance');
-                    if (cameraModal) {
-                        cameraModal.show();
-                        setTimeout(startCamera, 250);
+                    } else {
+                        launchAttendanceCamera();
                     }
                 }, 600);
             } catch (err) {
@@ -180,6 +242,9 @@
         }
 
         async function startScanner() {
+            if (!scanModalElement.classList.contains('show')) {
+                return;
+            }
             scanStatus.innerHTML = '<span class="text-muted">Point camera at teacher QR code.</span>';
             const reason = getCameraBlockReason();
             if (reason) {
@@ -195,15 +260,24 @@
             qrScanner = new Html5Qrcode('qr-reader');
             scannerRunning = true;
             try {
+                const scannerConfig = {
+                    fps: 2,
+                    qrbox: { width: 180, height: 180 },
+                    disableFlip: true,
+                };
+                if (typeof Html5QrcodeSupportedFormats !== 'undefined') {
+                    scannerConfig.formatsToSupport = [Html5QrcodeSupportedFormats.QR_CODE];
+                }
                 await qrScanner.start(
                     { facingMode: 'environment' },
-                    { fps: 10, qrbox: { width: 220, height: 220 } },
+                    scannerConfig,
                     async function onScanSuccess(decodedText) {
                         await stopScanner();
                         submitScannedToken(decodedText);
                     },
                     function onScanFailure() {}
                 );
+                scheduleScannerAutoStop();
             } catch (err) {
                 scanStatus.innerHTML = '<span class="text-danger">Unable to start QR scanner.</span>';
                 scannerRunning = false;
@@ -219,7 +293,11 @@
                 selectedClassroomId = parseInt(btn.dataset.classroomId, 10);
                 if (scanModal) {
                     scanModal.show();
-                    setTimeout(startScanner, 300);
+                    unlockBodyScroll();
+                    if (startScannerTimer) {
+                        clearTimeout(startScannerTimer);
+                    }
+                    startScannerTimer = setTimeout(startScanner, 220);
                 }
             });
         });
@@ -246,14 +324,29 @@
             setCameraMode('register');
             if (cameraModal) {
                 cameraModal.show();
+                unlockBodyScroll();
                 setTimeout(startCamera, 250);
             }
         });
 
+        scanModalElement.addEventListener('shown.bs.modal', function () {
+            normalizeBackdrops();
+            unlockBodyScroll();
+        });
+
         scanModalElement.addEventListener('hidden.bs.modal', function () {
+            if (startScannerTimer) {
+                clearTimeout(startScannerTimer);
+                startScannerTimer = null;
+            }
             stopScanner();
             scanStatus.innerHTML = '';
             manualTokenInput.value = '';
+            cleanupModalArtifacts();
+            if (openCameraAfterScanClose) {
+                openCameraAfterScanClose = false;
+                launchAttendanceCamera();
+            }
         });
 
         cameraModalElement.addEventListener('hidden.bs.modal', function () {
@@ -268,6 +361,8 @@
             captureBtn.disabled = false;
             setCameraMode('register');
             pendingAttendanceId = null;
+            cleanupModalArtifacts();
+            unlockBodyScroll();
         });
 
         captureBtn.addEventListener('click', async function () {

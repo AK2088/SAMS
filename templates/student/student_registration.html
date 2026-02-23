@@ -6,7 +6,7 @@
 <div class="container py-5">
 
     <div class="row justify-content-center">
-        <div class="col-lg-6 col-md-8">
+        <div class="col-lg-6 col-md-8 col-sm-10">
 
             <!-- Warning Message -->
             <div class="alert alert-warning text-center mb-4" role="alert">
@@ -19,9 +19,10 @@
             </div>
 
 
-            <div class="card shadow-sm border-0">
-                <div class="card-body p-4">
+            <div class="card auth-card border-0">
+                <div class="card-body p-4 p-md-5">
 
+                    <p class="kicker text-center mb-2">Student Onboarding</p>
                     <h3 class="fw-bold text-center mb-4">
                         Student Registration
                     </h3>
@@ -76,11 +77,9 @@
                             Proceed for Email Verification
                         </button>
 
-                    <a href="{% url 'login' %}" class="d-block mx-auto mt-3 text-center">
-                        <button type="button" class="btn btn-secondary ">
+                        <a href="{% url 'login' %}" class="btn btn-secondary w-100 mt-3">
                             Login instead ?
-                        </button>
-                    </a>
+                        </a>
 
                     </form>
 
